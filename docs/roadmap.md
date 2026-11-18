@@ -48,9 +48,14 @@
 - Idempotência e agendamento
 - Registro de resultado e tratamento de falhas
 
+## Limites da fase atual
+
+A Fase 1 termina na ingestão de gravações estáveis. Não implementar agora: detector de picos, captura ativa pelo OBS, buffer circular, transcrição, recorte de vídeos, legendas, publicação no YouTube ou interface gráfica. Os pacotes reservados permanecem apenas documentados — sem funções fictícias ou stubs executáveis.
+
 ## Princípios permanentes
 
 - Apenas conteúdo autorizado.
 - Nenhum download de transmissão, extração de URL interna ou contorno de DRM.
 - Dependências adicionadas somente na fase que as utiliza.
 - Testes e documentação acompanham cada fase.
+- Nenhum módulo é preenchido com código fictício; funcionalidade só entra quando a fase correspondente for implementada.

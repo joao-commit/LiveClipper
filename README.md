@@ -18,12 +18,19 @@ Implementado:
 - Origem de vídeo substituível por contrato (`SourceAdapter` + registro de adaptadores).
 - Testes com Pytest/TestClient.
 
-Fora do escopo desta fase:
+Fora do escopo desta fase (não implementar ainda):
 
+- Detector de picos e qualquer análise de áudio.
+- Captura ativa pelo OBS (iniciar/parar gravação ou controlar o replay buffer).
+- Buffer circular de segmentos.
+- Transcrição de áudio.
+- Recorte de vídeos.
+- Legendas.
+- Publicação no YouTube.
+- Interface gráfica.
 - Download de transmissões ou acesso a URLs internas de plataformas.
-- Buffer circular em memória e detecção de momentos.
-- Recorte, conversão vertical, legendas e publicação no YouTube.
-- Controle remoto do OBS via WebSocket (apenas configuração e diagnóstico).
+
+Os pacotes `detection/`, `clipping/` e `publishing/` contêm apenas documentação da fase futura. **Nenhuma função fictícia, stub executável ou rota é criada para preencher módulos**; o único contrato futuro é o `Protocol` `ObsClient`, que não executa nada.
 
 O roadmap está em [`docs/roadmap.md`](docs/roadmap.md). A especificação completa, as fases e os critérios de aceite estão em [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md).
 

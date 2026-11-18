@@ -30,13 +30,18 @@ Esta fase **não** baixa transmissões, não acessa URLs internas de plataformas
 
 | Item | Fase prevista |
 | --- | --- |
-| Metadados de mídia com FFprobe e buffer circular | 2 |
-| Detecção por áudio, transcrição e chat | 3 |
-| Recorte e enquadramento vertical com FFmpeg/OpenCV | 4 |
+| Metadados de mídia com FFprobe | 2 |
+| Buffer circular de segmentos | 2 |
+| Detector de picos e análise de áudio | 3 |
+| Transcrição de áudio e leitura de chat | 3 |
+| Recorte de vídeos e enquadramento vertical com FFmpeg/OpenCV | 4 |
 | Legendas com Faster-Whisper | 5 |
 | Publicação no YouTube com OAuth 2.0 | 6 |
-| Controle remoto do OBS via WebSocket | fase futura, ainda não iniciada |
+| Captura ativa pelo OBS (gravação/replay buffer) e controle remoto via WebSocket | fase futura, ainda não iniciada |
+| Interface gráfica | não planejada; a interface desta fase é a API HTTP |
 | Autenticação na API | antes de qualquer exposição remota |
+
+**Limite de implementação:** os pacotes reservados (`app.detection`, `app.clipping`, `app.publishing`) contêm somente documentação. Não crie funções fictícias, stubs executáveis, rotas ou dependências apenas para preencher módulos; cada fase adiciona código real quando for iniciada. O `Protocol` `ObsClient` é apenas um contrato de tipos e não executa chamadas.
 
 ## 3. Uso responsável e autorização
 

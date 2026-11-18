@@ -118,6 +118,21 @@ O LiveClipper não decide se o uso é lícito; ele registra a fonte autorizada e
 | SQLite | Desenvolvimento e execução local simples | Para múltiplos workers/alta concorrência, avaliar PostgreSQL |
 | Sem WebSocket OBS | Não é necessário para ingerir arquivos | Controle de gravação/replay buffer fica para fase futura ([desenho](obs-websocket.md)) |
 
+### 7.1 Limites explícitos desta fase
+
+Não fazem parte desta fase e não devem receber código, rota, dependência ou stub:
+
+- detector de picos ou qualquer análise de áudio;
+- captura ativa pelo OBS (iniciar/parar gravação, replay buffer);
+- buffer circular de segmentos;
+- transcrição;
+- recorte de vídeos;
+- legendas;
+- publicação no YouTube;
+- interface gráfica.
+
+Os pacotes `detection/`, `clipping/` e `publishing/` existem apenas como documentação de fronteira. Funções fictícias para “preencher” módulos são proibidas; a implementação entra junto com a fase correspondente. `app/obs/client.py` define um `Protocol` de tipos, sem implementação executável.
+
 ## 8. Próximas fases (visão)
 
 - **Fase 2:** metadados com FFprobe, buffer circular de segmentos e política de retenção.
