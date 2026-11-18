@@ -85,7 +85,7 @@ OBS (WebSocket v5)
    │ RecordStateChanged (STARTED)
    ▼
 app.obs.client (conexão + reconexão)
-   │ publica evento interno
+   │ emite evento interno
    ▼
 app.capture.monitor / orquestrador
    │ agenda uma varredura da fonte correspondente

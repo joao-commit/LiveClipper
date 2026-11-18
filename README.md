@@ -2,7 +2,7 @@
 
 Sistema de **detecção de momentos interessantes em transmissões ao vivo autorizadas**.
 
-O LiveClipper recebe áudio e vídeo de uma transmissão capturada pelo **OBS Studio**, analisa o conteúdo e registra os momentos que poderiam virar bons clipes. O resultado é uma tabela contendo exclusivamente:
+O LiveClipper recebe áudio e vídeo de uma transmissão capturada pelo **OBS Studio**, analisa o conteúdo e registra os momentos que poderiam virar bons trechos. O resultado é uma tabela contendo exclusivamente:
 
 | Início do corte | Fim do corte | Descrição simples do acontecimento |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Esta revisão simplifica o produto sem descartar a fundação já implementada:
 - **Mantidos:** `app/obs`, `app/capture`, `app/sources` e `app/database`.
 - **Novo foco:** `app/detection` será o principal módulo funcional.
 - **Fora do projeto:** edição/recorte de vídeo, Shorts, conversão vertical, legendas e publicação.
-- **Não usado:** OpenCV.
+- **Análise visual:** não é requisito do MVP; OpenCV não faz parte do escopo.
 - **Preparação futura:** FFmpeg/FFprobe para áudio e Faster-Whisper para transcrição.
 - **Ainda não implementado:** detector de picos, transcrição, tabelas novas e migrações.
 
@@ -57,7 +57,7 @@ Planejado, não implementado nesta revisão:
 - Ingestão de gravações autorizadas produzidas pelo OBS.
 - Catálogo de gravações e monitoramento da pasta.
 - Organização das gravações em sessões contínuas de captura.
-- Análise de áudio e vídeo para identificar momentos interessantes.
+- Análise de áudio e transcrição como foco do MVP; o vídeo é ingerido, mas a análise visual não é obrigatória.
 - Persistência de candidatos com início, fim, descrição e pontuação interna.
 - Consulta dos candidatos pela API, com saída enxuta para revisão humana.
 
@@ -134,26 +134,48 @@ O modelo `recordings` atual **não é suficiente** para relacionar segmentos de 
 - `modified_at` é o horário do arquivo, não o início da transmissão;
 - não há duração nem deslocamento relativo ao início da sessão.
 
-Por isso, a proposta é adicionar uma tabela de sessões de captura (`capture_sessions`) e ligar cada `recording` a uma sessão. Os tempos de `clip_candidates` serão relativos ao início da sessão, preservando a continuidade mesmo quando o OBS dividir a gravação em vários arquivos.
+Por isso, a proposta é adicionar uma tabela de sessões de captura (`capture_sessions`) e complementar `recordings` com a referência temporal. Os tempos de `clip_candidates` serão relativos ao início da sessão, preservando a continuidade mesmo quando o OBS dividir a transmissão em vários arquivos.
 
-Tabela proposta (ainda **não criada**):
+### `capture_sessions` (proposta, ainda não criada)
 
-```text
-clip_candidates
-├── id
-├── source_id
-├── session_id          # âncora temporal da sessão
-├── recording_id        # arquivo onde o trecho começa
-├── start_seconds       # relativo ao início da sessão
-├── end_seconds         # relativo ao início da sessão
-├── description
-├── score               # pontuação interna (0..1)
-└── created_at
-```
+Representa uma transmissão contínua e é a **referência temporal oficial** do sistema.
 
-A saída apresentada ao operador contém apenas **início, fim e descrição**. `score`, `id` e vínculos internos existem para auditoria e ordenação, não para a tabela final.
+| Campo | Uso |
+| --- | --- |
+| `id` | Chave primária. |
+| `source_id` | Fonte autorizada que originou a sessão. |
+| `started_at` | Instante zero da linha do tempo. |
+| `ended_at` | Fim da transmissão; nulo enquanto ativa. |
+| `status` | `active`, `closed` ou `failed`. |
+| `created_at` | Auditoria. |
 
-Detalhes completos, incluindo `capture_sessions`, evolução de `recordings` e estratégia de migração não destrutiva, estão em [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md) e [`docs/architecture.md`](docs/architecture.md).
+### `recordings` (evolução aditiva)
+
+Todos os campos existentes são preservados. Quando necessário, adicionar:
+
+| Campo novo | Uso |
+| --- | --- |
+| `session_id` | Sessão à qual o arquivo pertence. |
+| `duration_seconds` | Duração do arquivo, obtida por FFprobe. |
+| `start_offset_seconds` | Segundo da sessão em que aquele arquivo começa. |
+
+A ordem dos segmentos pode ser obtida por `start_offset_seconds`; não é necessário criar um campo separado de índice.
+
+### `clip_candidates` (proposta, ainda não criada)
+
+| Campo | Uso |
+| --- | --- |
+| `id` | Chave primária. |
+| `session_id` | Sessão que define a linha do tempo. |
+| `start_seconds` | Início do corte, relativo ao início da sessão. |
+| `end_seconds` | Fim do corte, relativo ao início da sessão. |
+| `description` | Descrição simples do acontecimento. |
+| `score` | Pontuação interna (0..1). |
+| `created_at` | Data de criação. |
+
+Não há `recording_id` obrigatório no candidato: um acontecimento pode atravessar vários segmentos de gravação. A sessão é a referência temporal principal. A saída apresentada ao operador contém apenas **início, fim e descrição**; `id` e `score` são internos.
+
+Detalhes completos, incluindo chaves estrangeiras, índices, restrições e estratégia de migração não destrutiva, estão em [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md) e [`docs/architecture.md`](docs/architecture.md).
 
 ## Requisitos
 
@@ -163,7 +185,7 @@ Detalhes completos, incluindo `capture_sessions`, evolução de `recordings` e e
 - Para a fase de detecção:
   - **FFmpeg e FFprobe** (binários externos) para metadados e extração de áudio;
   - **Faster-Whisper** (dependência Python opcional) para transcrição.
-- **OpenCV não será usado.**
+- **OpenCV não é necessário e não faz parte do MVP.**
 
 ## Instalação
 

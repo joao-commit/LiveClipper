@@ -104,7 +104,7 @@ Se usar áudio da área de trabalho, ative **Não Perturbe** e feche aplicativos
 
 ### 4.5 Níveis e faixas
 
-- No mixer, ajuste o ganho para picos em torno de **-12 dB a -6 dB**, evitando clipping (vermelho).
+- No mixer, ajuste o ganho para picos em torno de **-12 dB a -6 dB**, evitando saturação (vermelho).
 - Em **Configurações → Saída → Avançado → Gravação**, habilite as faixas necessárias.
 - Em **Propriedades Avançadas de Áudio**, atribua as fontes às faixas. Para compatibilidade, mantenha uma faixa com o mix completo; faixas separadas podem ser úteis para a detecção futura, mas o LiveClipper ainda não as processa.
 - O formato `.mkv` suporta múltiplas faixas; players e ferramentas posteriores podem selecionar a faixa desejada.
@@ -189,7 +189,7 @@ O estado atual **não** usa o WebSocket. `LIVECLIPPER_OBS_WEBSOCKET_URL` e a sen
 - [ ] Conteúdo autorizado aberto na janela correta.
 - [ ] Captura de janela enquadrada, sem dados pessoais.
 - [ ] Áudio do navegador sendo capturado por uma única fonte.
-- [ ] Níveis sem clipping e sincronia conferida.
+- [ ] Níveis sem saturação e sincronia conferida.
 - [ ] Pasta de gravação correta, com espaço suficiente.
 - [ ] Formato `.mkv` (ou um único formato) e carimbo de data/hora.
 - [ ] Fonte cadastrada no LiveClipper com `authorization_reference`.

@@ -2,302 +2,302 @@
 
 ## 1. Princípios
 
-1. **Autorização primeiro:** nenhuma fonte pode ser cadastrada sem referência de autorização e confirmação explícita. O sistema registra a evidência; não a substitui.
-2. **OBS é a origem oficial:** a captura audiovisual acontece no OBS Studio. O LiveClipper observa as gravações resultantes.
+1. **Autorização primeiro:** nenhuma fonte pode ser capturada ou analisada sem referência de autorização e confirmação explícita.
+2. **OBS é a fonte oficial:** a captura audiovisual acontece no OBS Studio; o LiveClipper observa as gravações resultantes.
 3. **Detecção, não edição:** o produto identifica momentos e entrega uma tabela de candidatos. Ele não recorta, renderiza, legenda ou publica.
-4. **Sem contorno de plataforma:** não há download de transmissão, extração de URL interna, DRM ou bypass de restrição.
-5. **Fronteiras pequenas:** cada pacote tem uma responsabilidade clara e depende de contratos, não de detalhes de outros módulos.
-6. **Evolução incremental:** a fundação de ingestão é preservada; a detecção entra por cima dela, sem reescrever o que já funciona.
-7. **Dependências sob demanda:** FFmpeg/FFprobe e Faster-Whisper entram somente na fase que os utiliza. OpenCV não entra.
+4. **Sessão é a linha do tempo:** os tempos são relativos ao início da sessão de captura, não a um arquivo isolado.
+5. **Áudio e transcrição primeiro:** o MVP prioriza intensidade sonora e fala. Análise visual não é obrigatória.
+6. **Fronteiras pequenas:** captura, persistência, detecção e API se comunicam por contratos claros.
+7. **Evolução incremental:** a fundação existente é preservada; as novas tabelas e o detector entram em fases posteriores.
+8. **Dependências sob demanda:** FFmpeg/FFprobe e Faster-Whisper entram somente quando suas fases forem implementadas.
 
 ## 2. Componentes
 
 ```text
 OBS Studio
-   │ grava .mkv/.mp4/... em um diretório local
+   │ grava segmentos em diretório local
    ▼
-sources (LocalObsDirectorySource)
-   │ lista arquivos suportados + tamanho + mtime
+app.sources ── SourceAdapter / cadastro autorizado
+   │ caminho, tamanho, mtime
    ▼
-capture.scanner
-   │ descarta arquivos instáveis, vazios e duplicados
+app.capture.scanner + monitor
+   │ estabilidade, deduplicação, polling
    ▼
-database (capture_sources, recordings)
+app.database (SQLite + SQLAlchemy)
+   │ capture_sources · recordings
+   │ [planejado] capture_sessions · clip_candidates
    │
-   ├── capture.monitor  → varredura periódica em thread separada
-   ├── detection        → módulo principal planejado
-   │     ├── audio.py/ffmpeg (futuro)
-   │     ├── transcription.py (futuro)
-   │     └── candidates.py (futuro)
-   └── api              → FastAPI/REST + health + futura tabela
+   ├── app.detection  ← núcleo planejado
+   │      ├── FFmpeg/FFprobe
+   │      ├── análise de intensidade
+   │      ├── Faster-Whisper
+   │      └── candidatos
+   │
+   └── app.api (FastAPI)
+          ├── endpoints existentes
+          └── [planejado] consulta de candidatos
 ```
 
-| Pacote | Responsabilidade atual | Evolução |
-| --- | --- | --- |
-| `app.obs` | Configuração e diagnóstico do OBS. Contrato futuro para WebSocket. | Abrir/fechar sessões com precisão, se necessário. |
-| `app.sources` | Abstração de fontes, adaptador de diretório local, registro, cadastro autorizado e normalização de extensões. | Mantido sem alteração estrutural. |
-| `app.capture` | Varredura, regra de estabilidade, deduplicação e monitor periódico. | Associar gravações a sessões. |
-| `app.database` | Modelos SQLAlchemy, sessão, `create_all` e repositórios. | Novas tabelas e migração aditiva. |
-| `app.detection` | Nesta revisão, apenas documentação do escopo. | **Núcleo funcional:** áudio, transcrição, evidências e candidatos. |
-| `app.api` | Routers, dependências, schemas Pydantic e tratamento HTTP. | Nova rota de consulta de candidatos. |
-| `app.clipping` | Fora do escopo; vazio. | Não desenvolver. |
-| `app.publishing` | Fora do escopo; vazio. | Não desenvolver. |
-
-## 3. Fluxo de ingestão atual
-
-1. A API cria uma `CaptureSource` com `authorization_reference`, `authorization_notes` e `authorized_at`.
-2. O monitor (`CaptureMonitor`) executa a cada `CAPTURE_POLL_INTERVAL_SECONDS`.
-3. Para cada fonte habilitada, o adaptador registrado em `app.sources.factory` lista arquivos cuja extensão está na allowlist da fonte. O adaptador ativo vem de `LIVECLIPPER_SOURCE_ADAPTER` (padrão `obs_directory`); o scanner só conhece o contrato `SourceAdapter`.
-4. O scanner aplica:
-   - **tamanho > 0** (caso contrário: `ignored`);
-   - **mtime mais antigo que `now - CAPTURE_SETTLE_SECONDS`** (caso contrário: `unstable`);
-   - **path ainda não persistido** (caso contrário: `duplicate`);
-5. O arquivo estável vira um `Recording` com `status=ready`.
-6. A API expõe o catálogo em `/api/v1/recordings`.
-
-A deduplicação usa a restrição `UNIQUE(path)`. Se duas varreduras concorrerem, a segunda recebe `IntegrityError` e contabiliza duplicidade, sem quebrar o lote.
-
-## 4. Modelo de dados e continuidade temporal
-
-### 4.1 Tabelas existentes
-
-`capture_sources` guarda a fonte autorizada, o diretório observado, a allowlist e a evidência de autorização.
-
-`recordings` guarda um arquivo por linha:
-
-| Campo | Uso |
+| Pacote | Responsabilidade |
 | --- | --- |
-| `source_id` | FK com `ON DELETE CASCADE` |
-| `path` | Caminho absoluto único (idempotência) |
-| `filename`, `size_bytes`, `modified_at` | Metadados do arquivo |
-| `status` | `ready`, `processing`, `completed`, `failed`, `ignored` |
-| `discovered_at`, `ready_at` | Linha do tempo da ingestão |
-| `error_message` | Diagnóstico |
+| `app.config` | Configuração por ambiente e `.env` com Pydantic Settings. |
+| `app.database` | Modelos SQLAlchemy, sessão, `create_all` e repositórios. |
+| `app.sources` | Cadastro autorizado, contrato `SourceAdapter`, adaptador local e registro. |
+| `app.capture` | Varredura, estabilidade, deduplicação e monitor periódico. |
+| `app.obs` | Diagnóstico do OBS e contrato futuro `ObsClient`. |
+| `app.detection` | Núcleo planejado: sessões, áudio, transcrição, delimitação e candidatos. Nesta revisão, apenas documentação. |
+| `app.api` | Rotas, dependências, schemas HTTP e tratamento de erros. |
+| `app.clipping` | Fora do escopo; vazio, sem código executável. |
+| `app.publishing` | Fora do escopo; vazio, sem código executável. |
 
-### 4.2 Por que `recordings` não basta
+## 3. Ingestão atual
 
-O modelo é orientado a **arquivo**, não a **transmissão**:
+1. O OBS grava a janela autorizada e o áudio em um diretório local.
+2. O operador cadastra uma fonte via `POST /api/v1/sources`, com `authorization_reference` e `watch_directory`.
+3. O `CaptureMonitor` executa a varredura a cada `LIVECLIPPER_CAPTURE_POLL_INTERVAL_SECONDS`.
+4. O `SourceAdapter` lista arquivos cuja extensão está na allowlist.
+5. O scanner descarta arquivos vazios, arquivos ainda em escrita e caminhos já registrados.
+6. Um arquivo estável vira um `Recording` com `status=ready`.
+7. A API expõe o catálogo em `/api/v1/recordings`.
 
-- o OBS pode dividir uma transmissão em vários arquivos;
-- não há vínculo entre esses arquivos;
-- `modified_at` não é o início da captura;
+A deduplicação usa `UNIQUE(path)`. O scanner não conhece OBS nem filesystem concreto: ele recebe `RecordingCandidate` com `path`, `size_bytes` e `modified_at`.
+
+O mecanismo atual é orientado a arquivos estáveis. A captura segmentada e o processamento contínuo são a Fase 2 do roadmap e **não** estão implementados.
+
+## 4. Modelo temporal
+
+### 4.1 Limitação de `recordings`
+
+`recordings` é orientado a arquivo:
+
+- não relaciona dois arquivos da mesma transmissão;
+- `modified_at` não é o início da transmissão;
 - não há duração nem deslocamento relativo;
-- portanto, não é possível calcular tempos relativos à transmissão nem saber se dois segmentos são contínuos.
+- um acontecimento pode atravessar vários arquivos;
+- os tempos de um candidato não podem ser calculados apenas com `recordings`.
 
-Consequência: os tempos de `clip_candidates` não podem ser confiáveis se forem relativos apenas a um `recording` isolado. É necessária uma **sessão de captura**.
+Conclusão: `recordings` não é suficiente como referência temporal. É necessária uma sessão de captura.
 
-### 4.3 `capture_sessions` (proposta)
+### 4.2 `capture_sessions` (proposta)
+
+Representa uma transmissão contínua e é a **referência temporal oficial**.
 
 | Campo | Uso |
 | --- | --- |
-| `id` | Identidade da sessão. |
-| `source_id` | Fonte autorizada dona da sessão. |
+| `id` | Chave primária. |
+| `source_id` | FK para `capture_sources.id`, `ON DELETE CASCADE`. |
 | `started_at` | Instante zero da linha do tempo. |
-| `ended_at` | Fim da captura, nulo enquanto ativa. |
-| `status` | `active`, `closed`, `incomplete`, `failed`. |
-| `external_reference` | Referência opcional do OBS/arquivo inicial. |
-| `created_at`, `updated_at` | Auditoria. |
+| `ended_at` | Fim da transmissão; nulo enquanto ativa. |
+| `status` | `active`, `closed` ou `failed`. |
+| `created_at` | Auditoria. |
 
-`recordings` recebe, de forma aditiva:
+Restrições e índices:
 
-- `session_id` (FK anulável para dados legados);
-- `segment_index`;
-- `start_offset_seconds`;
-- `duration_seconds`.
+- `ended_at` é nulo ou maior/igual a `started_at`.
+- Índice `(source_id, started_at)`.
+- Várias sessões podem existir para a mesma fonte ao longo do tempo.
+- Reinícios, quedas e lacunas relevantes podem abrir uma nova sessão.
+- Sem OBS WebSocket, a sessão pode ser inferida pela ordem e proximidade dos arquivos; o `started_at` é aproximado.
 
-A sessão pode ser criada de duas formas:
+### 4.3 Evolução de `recordings`
 
-1. **Com OBS WebSocket (futuro):** evento de início/parada abre e fecha a sessão com precisão.
-2. **Sem WebSocket (transição):** o coordenador infere a sessão pela ordem dos arquivos, proximidade temporal e duração obtida por FFprobe. O `started_at` é aproximado e deve ser tratado como tal.
+Todos os campos existentes são preservados. Adicionar, quando necessário:
 
-Uma sessão não é necessariamente a transmissão inteira: quedas, pausas longas e reinícios podem abrir uma nova sessão. O importante é que cada sessão tenha um instante zero estável e que os arquivos estejam ordenados dentro dela.
+| Campo novo | Uso |
+| --- | --- |
+| `session_id` | FK para `capture_sessions.id`, `ON DELETE SET NULL`, anulável para dados legados. |
+| `duration_seconds` | Duração do arquivo, obtida por FFprobe. |
+| `start_offset_seconds` | Segundo da sessão em que aquele arquivo começa. |
+
+- `start_offset_seconds` ordena os segmentos; não é necessário um campo separado de índice.
+- Índice `(session_id, start_offset_seconds)`.
+- Registros legados permanecem válidos com `session_id` nulo.
+- Nenhuma coluna existente é removida ou renomeada.
 
 ### 4.4 `clip_candidates` (proposta)
 
 | Campo | Uso |
 | --- | --- |
 | `id` | Chave primária. |
-| `source_id` | FK da fonte autorizada. |
-| `session_id` | FK da sessão; âncora temporal. |
-| `recording_id` | FK do arquivo onde o trecho começa (anulável após retenção). |
+| `session_id` | FK para `capture_sessions.id`, `ON DELETE CASCADE`. |
 | `start_seconds` | Início relativo ao início da sessão. |
 | `end_seconds` | Fim relativo ao início da sessão. |
 | `description` | Descrição simples do acontecimento. |
-| `score` | Pontuação interna (0..1). |
-| `created_at` | Criação. |
+| `score` | Pontuação interna entre 0 e 1. |
+| `created_at` | Data de criação. |
 
-Regras:
+Restrições e índices:
 
-- `0 <= start_seconds < end_seconds`.
-- `0 <= score <= 1`.
-- Índice por `(session_id, start_seconds)` para consultas por sessão.
-- A saída para o operador expõe apenas início, fim e descrição.
-- `recording_id` identifica o arquivo inicial; se o trecho atravessar arquivos, a sessão mantém a continuidade.
+- `CHECK (start_seconds >= 0)`.
+- `CHECK (end_seconds > start_seconds)`.
+- `CHECK (score >= 0 AND score <= 1)`.
+- Índice `(session_id, start_seconds)`.
+- **Sem `recording_id` obrigatório:** o acontecimento pode atravessar vários segmentos. A sessão é a referência temporal principal.
+- `source_id` não é necessário no candidato; é obtido pela sessão.
+- A saída para o operador contém apenas início, fim e descrição.
 
-### 4.5 Migração
+### 4.5 Migração não destrutiva
 
-A revisão atual **não altera o banco**. A evolução será não destrutiva:
+A correção atual não altera o banco. A evolução será aditiva:
 
-- novas tabelas são aditivas;
-- `recordings.session_id` exige migração real com Alembic, pois `create_all` não altera tabelas existentes;
-- nenhuma coluna existente será removida ou renomeada;
-- registros legados podem permanecer com `session_id` nulo;
+- novas tabelas são criadas sem afetar as existentes;
+- `recordings.session_id` exige migração real com Alembic;
+- nenhuma coluna existente é removida ou renomeada;
+- dados legados podem permanecer com `session_id` nulo;
 - backfill é opcional e não deve inventar precisão temporal.
 
-## 5. Pipeline de detecção planejado
+## 5. Processamento contínuo e detecção
 
-```text
-recordings estáveis
-        │
-        ▼
-capture_sessions
-        │ instante zero
-        ▼
-FFprobe ── valida faixa de áudio, duração e codecs
-        │
-        ▼
-FFmpeg ── extrai PCM mono 16 kHz em janelas
-        │
-        ├── análise de energia/picos (futuro)
-        └── Faster-Whisper (futuro)
-        │
-        ▼
-evidências com timestamps relativos à sessão
-        │
-        ▼
-montagem de candidatos
-        │ duração mínima/máxima, score, descrição
-        ▼
-clip_candidates
-        │
-        ▼
-API: início, fim, descrição
-```
+### 5.1 Sequência do MVP
 
-### 5.1 FFmpeg/FFprobe
+1. Receber segmentos do OBS.
+2. Extrair áudio com FFmpeg.
+3. Analisar intensidade e variações sonoras.
+4. Transcrever fala com Faster-Whisper.
+5. Identificar acontecimentos interessantes.
+6. Delimitar início e fim.
+7. Gerar descrição.
+8. Salvar candidatos no SQLite.
 
-- Binários externos, não dependências Python.
-- FFprobe obtém duração, codecs e faixas de áudio.
-- FFmpeg extrai áudio mono em PCM 16 kHz para análise e transcrição.
-- Invocação com lista de argumentos (sem `shell=True`), timeout e caminhos catalogados.
-- Arquivos temporários ficam em `data/` ou diretório de trabalho controlado.
-- Falhas são registradas em `error_message` e não derrubam o monitor.
+Nenhuma dessas etapas está implementada nesta tarefa.
 
-### 5.2 Faster-Whisper
+### 5.2 Extração de áudio
 
-- Dependência Python opcional, adicionada somente na fase de transcrição.
-- Modelo carregado de forma preguiçosa e configurável.
-- Transcrição produz texto e timestamps; o offset da janela é somado ao offset do arquivo e ao início da sessão.
-- Em CPU, o padrão sugerido é `int8`; GPU é opcional.
-- O modelo não deve ser baixado automaticamente em CI; testes usarão um duplo de teste.
+- FFprobe valida duração, codecs e faixa de áudio.
+- FFmpeg extrai PCM mono 16 kHz em janelas configuráveis.
+- A invocação usa lista de argumentos, sem shell, com timeout e caminhos catalogados.
+- O offset do arquivo (`start_offset_seconds`) é somado ao timestamp local para produzir o tempo oficial da sessão.
 
-### 5.3 Detector de picos
+### 5.3 Análise sonora
 
-Não implementado nesta revisão. A próxima fase definirá:
+A análise mede energia e variações de intensidade para localizar falas exaltadas, risadas, gritos, pausas e transições. O detector de picos será implementado na fase própria, com:
 
 - janela de análise e suavização;
 - limiar relativo ao ruído de fundo;
-- duração mínima/máxima do candidato;
-- fusão de picos próximos;
-- uso da transcrição para descrição e priorização;
-- escala e calibração do score.
+- duração mínima e máxima;
+- fusão de eventos próximos;
+- calibração do score.
 
-### 5.4 Vídeo
+### 5.4 Transcrição
 
-O vídeo é ingerido e catalogado. A análise inicial é centrada em áudio/fala, sem OpenCV. FFprobe pode fornecer metadados visuais; qualquer análise visual futura deve usar FFmpeg ou outra abordagem que não introduza OpenCV sem justificativa.
+- Faster-Whisper será dependência opcional da fase de transcrição.
+- O modelo é carregado de forma preguiçosa e configurável.
+- A transcrição fornece texto e timestamps.
+- Timestamps locais são convertidos para o tempo da sessão.
+- Em CI, usa-se um duplo de teste; o modelo não é baixado automaticamente.
 
-### 5.5 Tempo real e latência
+### 5.5 Identificação, delimitação e descrição
 
-A ingestão atual é orientada a arquivos estáveis. Para a detecção acompanhar a transmissão, a estratégia planejada é gravar em segmentos curtos, registrar cada segmento ao estabilizar e enfileirá-lo para análise. A latência será a soma do `settle`, da extração de áudio e da análise.
+A combinação de energia, variações sonoras e transcrição produz evidências. O sistema deverá:
 
-Isso não é streaming frame a frame: não há buffer circular nem captura ativa nesta revisão. A vantagem é reaproveitar o monitor, a deduplicação e o catálogo existentes, mantendo a análise incremental e tolerante a falhas.
+- identificar acontecimentos interessantes;
+- delimitar `start_seconds` e `end_seconds` relativos à sessão;
+- evitar candidatos sobrepostos ou curtos demais;
+- gerar descrição simples e objetiva;
+- calcular `score` interno para ordenação.
 
-## 6. Concorrência e ciclo de vida
+### 5.6 Chat opcional
+
+O chat do YouTube poderá ser integrado futuramente como fonte complementar, por acesso oficial e autorizado. Ele não é obrigatório, não substitui áudio/transcrição e não deve ser obtido por scraping ou contorno de restrições.
+
+### 5.7 Análise visual opcional
+
+O vídeo é ingerido e catalogado, mas a análise visual **não é obrigatória**. O MVP prioriza áudio e transcrição. OpenCV não faz parte do escopo atual e não deve ser adicionado sem justificativa e fase própria.
+
+## 6. Processamento contínuo por segmentos
+
+O objetivo é registrar candidatos enquanto a transmissão acontece. A fundação atual espera o arquivo ficar estável (`settle`). A evolução planejada:
+
+1. OBS grava segmentos curtos.
+2. O monitor registra cada segmento estabilizado.
+3. O segmento entra em uma fila de análise.
+4. FFmpeg/FFprobe extraem áudio e metadados.
+5. A análise e a transcrição geram evidências.
+6. Os tempos são convertidos para a sessão.
+7. Candidatos são persistidos sem esperar o fim da transmissão.
+
+A latência será a soma do `settle`, da extração e da análise. **Não há captura segmentada, buffer circular ou análise frame a frame nesta tarefa.**
+
+## 7. Persistência e consulta
+
+- `clip_candidates` será persistido no SQLite.
+- A consulta será exposta por FastAPI.
+- A resposta terá apenas `start_seconds`, `end_seconds` e `description`.
+- `id` e `score` permanecem internos.
+- Nenhuma rota de edição, legenda ou publicação será adicionada.
+- Os endpoints existentes de fontes, gravações, captura, OBS e health são preservados.
+
+## 8. Concorrência e ciclo de vida
 
 - O FastAPI usa `lifespan` para criar engine, tabelas, sessões e iniciar o monitor.
-- O monitor roda no event loop, mas a varredura síncrona é executada com `asyncio.to_thread`.
-- Um `asyncio.Lock` impede varreduras simultâneas do monitor.
-- Cada requisição HTTP recebe uma sessão própria; a sessão sempre é fechada e sofre rollback em exceção.
+- O monitor roda no event loop; a varredura síncrona usa `asyncio.to_thread`.
+- Um `asyncio.Lock` impede varreduras simultâneas.
+- Cada requisição HTTP recebe uma sessão própria, com rollback em exceção.
 - SQLite usa `check_same_thread=False`, `foreign_keys=ON` e `busy_timeout=5000`.
 - No shutdown, o monitor é parado e o engine descartado.
-- A futura detecção deve rodar em worker separado do monitor para não bloquear a ingestão; a fila e o paralelismo serão definidos na fase de detecção.
+- A futura detecção deve rodar em worker separado para não bloquear a ingestão.
 
-## 7. Segurança operacional
+## 9. Segurança operacional
 
-A API atual não possui autenticação e pressupõe execução local/confiável. O bind padrão é `127.0.0.1`. Antes de expor remotamente, adicione autenticação, TLS e controle de acesso em um reverse proxy ou em uma camada própria. As senhas do OBS WebSocket usam `SecretStr` e nunca são serializadas nos endpoints de diagnóstico.
+A API atual não possui autenticação e pressupõe execução local/confiável. O bind padrão é `127.0.0.1`. Antes de expor remotamente, adicione autenticação, TLS e controle de acesso.
 
-O adaptador local ignora symlinks e valida que cada arquivo resolvido permanece dentro do diretório autorizado. O sistema não baixa transmissões, não acessa fontes protegidas e não publica conteúdo. Consulte [`SECURITY.md`](SECURITY.md).
+O adaptador local ignora symlinks para fora do diretório autorizado. O sistema não baixa transmissões, não acessa fontes protegidas e não publica conteúdo.
 
-Novos cuidados da detecção:
+Cuidados futuros:
 
 - invocar FFmpeg/FFprobe sem shell;
 - limitar tempo e tamanho de saída;
-- não expor transcrições completas em logs;
+- não registrar transcrições completas em logs;
 - tratar descrições e transcrições como dados privados;
-- não permitir caminhos arbitrários fornecidos por usuários da API.
+- não aceitar caminhos arbitrários fornecidos pela API.
 
-## 8. Autorização e conformidade
+Consulte [`SECURITY.md`](SECURITY.md).
 
-O cadastro exige `authorization_confirmed: true`. Campos vazios são rejeitados. A varredura revalida a presença de `authorization_reference` e `authorized_at` — proteção contra registros inseridos manualmente no banco sem o fluxo da API.
-
-Responsabilidades do operador:
-
-- obter e arquivar a autorização de captura, análise e reutilização;
-- limitar a captura ao conteúdo e período autorizados;
-- respeitar termos da plataforma, direitos de terceiros (música, convidados) e legislação aplicável;
-- revisar os candidatos antes de qualquer uso externo;
-- remover dados quando a autorização expirar.
-
-O LiveClipper não decide se o uso é lícito; ele registra a fonte autorizada e impede o cadastro sem confirmação.
-
-## 9. Decisões e limites
+## 10. Decisões e limites
 
 | Decisão | Motivo | Limite |
 | --- | --- | --- |
-| Ler arquivos do OBS | Simples, robusto, sem depender de rede ou plugin | Requer que o OBS grave localmente |
-| Polling em vez de inotify | Portátil e previsível | Latência de até um intervalo de polling |
-| Heurística por `mtime` | Sem dependências externas | Um arquivo pausado pode ser considerado estável; ajuste o settle |
-| Sessões explícitas | Preservar continuidade entre arquivos | Exatidão depende do WebSocket ou de inferência |
+| Ler arquivos do OBS | Simples e robusto | Requer gravação local |
+| Polling em vez de inotify | Portátil e previsível | Latência de até um intervalo |
+| Heurística por `mtime` | Sem dependências externas | Arquivo pausado pode parecer estável |
+| Sessão como referência temporal | Preserva continuidade entre arquivos | Exatidão depende do WebSocket ou de inferência |
 | Tempos relativos à sessão | Não quebram quando o OBS divide arquivos | Sessão aproximada gera timestamps aproximados |
-| `create_all` no schema atual | Banco novo e schema pequeno | Evolução de colunas exige Alembic |
-| SQLite | Desenvolvimento e execução local simples | Para múltiplos workers/alta concorrência, avaliar PostgreSQL |
-| Sem OpenCV | Não é necessário para análise inicial de áudio | Análise visual avançada fica fora do escopo |
-| Sem edição/publicação | O produto entrega candidatos para revisão humana | Nenhum vídeo é gerado ou enviado |
+| Sem `recording_id` obrigatório | Um evento pode atravessar segmentos | Rastreio do arquivo é metadado opcional |
+| Áudio e transcrição primeiro | MVP simples e útil | Análise visual não é obrigatória |
+| Sem edição/publicação | O produto entrega candidatos | Nenhum vídeo é gerado ou enviado |
 
-### 9.1 Limites explícitos
+### 10.1 Fora do escopo — permanente
 
-Não fazem parte do projeto e não devem receber código, rota, dependência ou stub:
+Não são fases futuras e não devem receber código, rota, dependência ou stub:
 
-- edição, recorte ou renderização de vídeo;
+- editor de vídeo;
+- recorte físico ou renderização;
 - Shorts e conversão vertical 9:16;
 - legendas;
 - publicação no YouTube ou em qualquer plataforma;
 - OAuth, upload e agendamento;
-- OpenCV;
 - interface gráfica.
 
-Nesta revisão também não entram:
+Nesta tarefa também não entram detector, captura segmentada, transcrição, tabelas, migrações ou rotas de candidatos.
 
-- detector de picos;
-- transcrição executável;
-- tabelas e migrações;
-- rotas de detecção/candidatos.
+## 11. Roadmap resumido
 
-`app.detection` contém apenas a documentação do escopo futuro. `app.clipping` e `app.publishing` permanecem vazios como marcadores históricos, sem funções executáveis.
+| Fase | Tema | Estado |
+| --- | --- | --- |
+| 1 | Fundação e catálogo de gravações | Concluída |
+| 2 | Sessões, segmentos e processamento contínuo | Planejada |
+| 3 | Análise de áudio e transcrição | Planejada |
+| 4 | Identificação de momentos, delimitação e descrição | Planejada |
+| 5 | Persistência, API de consulta e validação do resultado | Planejada |
 
-## 10. Próximas fases (visão)
+Detalhes em [`roadmap.md`](roadmap.md).
 
-- **Fase 3:** sessões de captura, evolução aditiva de `recordings`, tabela `clip_candidates`, FFprobe e migração com Alembic.
-- **Fase 4:** extração de áudio com FFmpeg, detector de picos, Faster-Whisper, descrição e pontuação.
-- **Fase 5:** calibração, retenção, robustez, observabilidade e testes de carga.
+## 12. Documentos relacionados
 
-Cada fase adiciona dependências apenas quando necessárias e mantém a origem em gravações autorizadas.
-
-## 11. Documentos relacionados
-
-- [`PROJECT_SPEC.md`](PROJECT_SPEC.md) — especificação funcional e critérios de aceite.
-- [`SECURITY.md`](SECURITY.md) — requisitos de segurança e autorização.
-- [`obs-setup.md`](obs-setup.md) — captura de janela do navegador e áudio.
-- [`obs-websocket.md`](obs-websocket.md) — integração futura não implementada.
-- [`recordings-monitoring.md`](recordings-monitoring.md) — monitoramento atual e futuro da pasta.
-- [`roadmap.md`](roadmap.md) — fases do produto.
+- [`README.md`](../README.md) — visão geral e escopo.
+- [`PROJECT_SPEC.md`](PROJECT_SPEC.md) — especificação funcional.
+- [`roadmap.md`](roadmap.md) — fases 1 a 5.
+- [`SECURITY.md`](SECURITY.md) — segurança e autorização.
+- [`obs-setup.md`](obs-setup.md) — configuração do OBS.
+- [`obs-websocket.md`](obs-websocket.md) — integração futura.
+- [`recordings-monitoring.md`](recordings-monitoring.md) — monitoramento da pasta.

@@ -65,8 +65,8 @@ Arquivos vazios são contabilizados como `ignored`; arquivos recentes como `unst
 | Sem metadados de mídia | Catálogo não sabe duração/codecs | FFprobe na fase de detecção |
 | Sem retenção | Pasta cresce indefinidamente | Política de retenção na fase de operação |
 | Sem detecção de remoção | Arquivo apagado continua no banco | Reconciliador futuro |
-| Sem sessão explícita | Arquivos da mesma captura não são relacionados | `capture_sessions` na fase de detecção |
-| Sem remux automático | `.mkv` não é convertido | Desnecessário: o sistema não gera clipes |
+| Sem sessão explícita | Arquivos da mesma captura não são relacionados | `capture_sessions` na Fase 2 |
+| Sem remux automático | `.mkv` não é convertido | Desnecessário: o sistema não gera arquivos de vídeo |
 | Sem autenticação | API local/confiável apenas | Autenticação antes de exposição remota |
 
 ## 4. Evoluções futuras
@@ -116,10 +116,11 @@ O contrato `SourceAdapter` e o registro em `app/sources/factory.py` permitem adi
 
 ### 4.7 Sessões de captura
 
-O catálogo atual relaciona arquivos, mas não sabe quais pertencem à mesma captura. A fase de detecção introduzirá `capture_sessions`:
+O catálogo atual relaciona arquivos, mas não sabe quais pertencem à mesma captura. A Fase 2 introduzirá `capture_sessions`:
 
 - cada sessão tem um `started_at` que serve de instante zero;
-- cada `recording` aponta para uma sessão (`session_id`) e recebe `segment_index`, `start_offset_seconds` e `duration_seconds`;
+- cada `recording` aponta para uma sessão (`session_id`) e recebe `start_offset_seconds` e `duration_seconds`;
+- `start_offset_seconds` indica em que segundo da sessão aquele arquivo começa;
 - os tempos de `clip_candidates` são relativos ao início da sessão;
 - sem OBS WebSocket, a sessão pode ser inferida pela proximidade temporal e pela duração obtida com FFprobe;
 - a migração é aditiva: registros legados permanecem válidos com `session_id` nulo.
