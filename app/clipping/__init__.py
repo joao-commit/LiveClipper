@@ -1,10 +1,6 @@
-"""Recorte e edição de clipes (Fase 4).
+"""Fora do escopo do LiveClipper 2.0.
 
-Contrato futuro:
-- recortar janelas detectadas com FFmpeg;
-- converter para 9:16;
-- gerar miniaturas e metadados;
-- registrar artefatos em ``output/``.
-
-A Fase 1 não altera vídeo.
+O produto não edita, recorta, renderiza, converte para 9:16, gera Shorts ou
+produz arquivos de vídeo. Este pacote permanece vazio apenas como marcador
+histórico; não adicione código, rotas, dependências ou stubs aqui.
 """

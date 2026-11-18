@@ -1,7 +1,7 @@
 """Varredura de arquivos de gravação e registro no banco.
 
-A Fase 1 não copia nem baixa conteúdo: apenas lê arquivos que o OBS já gravou
-em diretórios de fontes cadastradas e autorizadas.
+A captura atual não copia nem baixa conteúdo: apenas lê arquivos que o OBS já
+gravou em diretórios de fontes cadastradas e autorizadas.
 """
 
 from __future__ import annotations

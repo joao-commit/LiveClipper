@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "liveclipper"
 version = "0.1.0"
-description = "Pipeline de clipes para transmissões ao vivo capturadas com autorização via OBS Studio."
+description = "Detecção de momentos interessantes em transmissões ao vivo autorizadas capturadas via OBS Studio."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

@@ -1,61 +1,90 @@
-# Roadmap
+# Roadmap — LiveClipper 2.0
 
-## Fase 1 — Fundação OBS (atual)
+## Fase 0 — Fundação (concluída)
 
 - [x] Estrutura de pacotes por responsabilidade
-- [x] Configuração por ambiente
+- [x] Configuração por ambiente com Pydantic Settings
 - [x] SQLite + SQLAlchemy
+- [x] API FastAPI com health check
+- [x] Testes automatizados iniciais
+
+## Fase 1 — Ingestão OBS (concluída)
+
 - [x] Cadastro de fontes com autorização obrigatória
 - [x] Leitura de gravações locais do OBS
 - [x] Monitor periódico com regra de estabilidade
 - [x] Contrato de origem de vídeo substituível e registro de adaptadores
 - [x] Requisitos de segurança, autorização e higiene do Git
 - [x] API de health, fontes, captura e gravações
-- [x] Testes automatizados
+- [x] Testes automatizados da ingestão
 
-## Fase 2 — Catálogo e buffer
+## Fase 2 — Revisão de escopo 2.0 (concluída)
 
-- Metadados de mídia com FFprobe (duração, codecs, resolução, faixas de áudio)
-- Estratégia de buffer circular dos últimos minutos
-- Política de retenção e limpeza de arquivos
-- Migrações com Alembic
-- Estado de processamento por gravação
+- [x] Novo objetivo: detecção de momentos interessantes, sem edição/publicação
+- [x] Detecção definida como módulo principal planejado (`app/detection`)
+- [x] Pacotes de clipping e publicação marcados como fora do escopo
+- [x] OpenCV excluído
+- [x] FFmpeg/FFprobe e Faster-Whisper documentados como preparação futura
+- [x] Modelo `clip_candidates` planejado
+- [x] Tabela `capture_sessions` proposta para preservar a continuidade temporal
+- [x] README e documentação de arquitetura, especificação e roadmap atualizados
+- [x] Nenhuma alteração destrutiva no banco
+- [x] Detector de picos ainda não implementado
 
-## Fase 3 — Detecção
+## Fase 3 — Sessões, esquema e metadados (planejada)
 
-- Análise de energia/picos de áudio
-- Transcrição com Faster-Whisper
-- Leitura de chat somente quando houver autorização e acesso permitido
-- Pontuação e janelas candidatas persistidas
+- Criar `capture_sessions` com `started_at`, `ended_at`, status e vínculo com a fonte.
+- Adicionar a `recordings`, de forma aditiva, `session_id`, `segment_index`, `start_offset_seconds` e `duration_seconds`.
+- Introduzir migração com Alembic; não usar `create_all` para alterar tabelas existentes.
+- Associar gravações estáveis a sessões, com inferência documentada enquanto não houver WebSocket.
+- Validar duração, codecs e faixas de áudio com FFprobe.
+- Criar a tabela `clip_candidates`.
+- Criar repositório e endpoint de consulta retornando apenas início, fim e descrição.
+- Testar continuidade, lacunas, arquivos divididos e dados legados sem sessão.
 
-## Fase 4 — Clipping
+## Fase 4 — Análise de áudio e candidatos (planejada)
 
-- Recorte com FFmpeg
-- Conversão para 9:16 com OpenCV/FFmpeg
-- Thumbnails e metadados do clipe
-- Catálogo de artefatos em `output/`
+- Extrair PCM mono 16 kHz com FFmpeg em janelas configuráveis.
+- Implementar detector de energia/picos (somente nesta fase).
+- Integrar Faster-Whisper para transcrição com timestamps.
+- Converter timestamps locais para o tempo relativo à sessão.
+- Montar candidatos com duração mínima/máxima, supressão de sobreposição e score.
+- Gerar descrição simples a partir da transcrição e/ou de regras de evidência.
+- Persistir candidatos e expor a tabela para revisão humana.
+- Testar extração, transcrição com duplo de teste, falhas de FFmpeg/FFprobe e limites de duração.
 
-## Fase 5 — Legendas
+## Fase 5 — Operação e robustez (planejada)
 
-- Legendas a partir da transcrição
-- Estilos, quebra de linha e sincronização
-- Queima opcional no vídeo
+- Calibrar limiar de picos, score e duração por tipo de conteúdo.
+- Adicionar retenção de gravações e candidatos.
+- Melhorar observabilidade da análise (status, erros, tempo de processamento).
+- Avaliar processamento concorrente sem bloquear o monitor.
+- Documentar procedimentos de reprocessamento e auditoria.
+- Revisar segurança para eventual exposição remota da API.
 
-## Fase 6 — Publicação
+## Fora do escopo — permanentemente
 
-- OAuth 2.0 com escopo mínimo
-- YouTube Data API v3
-- Idempotência e agendamento
-- Registro de resultado e tratamento de falhas
+Estas funcionalidades não fazem parte do LiveClipper e não devem entrar em fases futuras:
+
+- Edição, recorte ou renderização de vídeo.
+- Geração de Shorts ou conversão para 9:16.
+- Legendas, queima de texto ou sincronização.
+- Publicação no YouTube ou em qualquer plataforma.
+- OAuth, upload, agendamento e integração com APIs de publicação.
+- OpenCV e processamento de imagem em tempo real.
+- Download de transmissões, URLs internas, DRM ou bypass de plataforma.
+- Interface gráfica.
 
 ## Limites da fase atual
 
-A Fase 1 termina na ingestão de gravações estáveis. Não implementar agora: detector de picos, captura ativa pelo OBS, buffer circular, transcrição, recorte de vídeos, legendas, publicação no YouTube ou interface gráfica. Os pacotes reservados permanecem apenas documentados — sem funções fictícias ou stubs executáveis.
+A revisão de escopo não implementa detector de picos, transcrição, novas tabelas, migrações ou rotas de candidatos. Os pacotes `app.detection`, `app.clipping` e `app.publishing` permanecem sem funções executáveis. `app.clipping` e `app.publishing` são apenas marcadores históricos e não pertencem ao produto.
 
 ## Princípios permanentes
 
 - Apenas conteúdo autorizado.
 - Nenhum download de transmissão, extração de URL interna ou contorno de DRM.
+- O produto entrega candidatos; a decisão de editar/publicar é humana e externa.
 - Dependências adicionadas somente na fase que as utiliza.
+- Migrações de banco não destrutivas.
 - Testes e documentação acompanham cada fase.
 - Nenhum módulo é preenchido com código fictício; funcionalidade só entra quando a fase correspondente for implementada.

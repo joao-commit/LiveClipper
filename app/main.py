@@ -65,8 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title=app_settings.app_name,
         version=__version__,
         description=(
-            "Pipeline de clipes para transmissões ao vivo capturadas com "
-            "autorização. A Fase 1 ingere gravações locais produzidas pelo OBS."
+            "Detecção de momentos interessantes em transmissões ao vivo "
+            "autorizadas. A fundação atual ingere gravações locais produzidas "
+            "pelo OBS Studio; a análise de áudio será adicionada na fase de "
+            "detecção."
         ),
         lifespan=lifespan,
     )
@@ -79,7 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "name": app_settings.app_name,
             "version": __version__,
-            "phase": "1 - fundação OBS",
+            "phase": "1 - fundação OBS (revisão de escopo 2.0)",
             "docs": "/docs",
             "health": "/health",
         }

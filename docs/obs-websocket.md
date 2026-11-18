@@ -1,10 +1,10 @@
 # Integração futura com o OBS WebSocket
 
-> **Estado: não implementada.** Este documento descreve o desenho previsto. Nenhuma conexão WebSocket é aberta na Fase 1, nenhuma dependência nova foi adicionada e nenhum comando é enviado ao OBS.
+> **Estado: não implementada.** Este documento descreve o desenho previsto. Nenhuma conexão WebSocket é aberta atualmente, nenhuma dependência nova foi adicionada e nenhum comando é enviado ao OBS.
 
 ## 1. Por que não usar agora
 
-A Fase 1 ingere arquivos gravados pelo OBS. Para isso, ler o diretório é suficiente, portátil e não exige habilitar servidor, senha ou plugin no OBS. O WebSocket adiciona valor quando for necessário **reagir a eventos** (gravação iniciada/parada) ou **controlar** o OBS (iniciar/parar gravação, replay buffer). Esses casos pertencem a uma fase futura e serão implementados somente depois de estabilizar a ingestão por arquivos.
+A captura atual ingere arquivos gravados pelo OBS. Para isso, ler o diretório é suficiente, portátil e não exige habilitar servidor, senha ou plugin no OBS. O WebSocket adiciona valor quando for necessário **reagir a eventos** (captura iniciada/parada), **abrir/fechar sessões com precisão** ou **controlar** o OBS (iniciar/parar gravação). Esses casos pertencem a uma fase futura e serão implementados somente depois de estabilizar a ingestão por arquivos.
 
 O que já existe hoje, sem conexão:
 
@@ -74,7 +74,7 @@ Biblioteca: ainda **não escolhida**. A implementação futura deve preferir um 
 | `StartRecord` | Exigir confirmação explícita e fonte autorizada ativa. |
 | `StopRecord` | Registrar quem solicitou e o motivo. |
 | `ToggleRecord` / pausa | Evitar uso acidental; preferir operações idempotentes. |
-| Replay buffer | Avaliar junto da Fase 2 (buffer de clipes). |
+| Replay buffer | Avaliar somente se necessário para reduzir latência; não é requisito da detecção. |
 
 Comandos de controle só entram depois de autenticação na API e de um fluxo de confirmação. A API da Fase 1 não tem autenticação e, por isso, não deve ganhar comandos remotos ainda.
 

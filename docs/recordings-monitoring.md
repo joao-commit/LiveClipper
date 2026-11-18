@@ -1,6 +1,6 @@
 # Monitoramento da pasta de gravações
 
-> **Estado atual:** o monitoramento por polling já está implementado na Fase 1. Este documento registra o comportamento atual e as evoluções futuras planejadas.
+> **Estado atual:** o monitoramento por polling já está implementado. Este documento registra o comportamento atual e as evoluções futuras planejadas.
 
 ## 1. Visão geral
 
@@ -22,7 +22,7 @@ scanner: tamanho > 0 · estável · não duplicado
 recordings (status=ready)
 ```
 
-## 2. Comportamento atual (Fase 1)
+## 2. Comportamento atual
 
 ### 2.1 Agendamento
 
@@ -62,10 +62,11 @@ Arquivos vazios são contabilizados como `ignored`; arquivos recentes como `unst
 | --- | --- | --- |
 | Polling | Latência de até um intervalo | Reduzir intervalo; futuro evento do OBS |
 | Heurística por `mtime` | Arquivo pausado pode parecer estável | Aumentar `settle`; futuro evento de fim de gravação |
-| Sem metadados de mídia | Catálogo não sabe duração/codecs | FFprobe na Fase 2 |
-| Sem retenção | Pasta cresce indefinidamente | Política de retenção na Fase 2 |
+| Sem metadados de mídia | Catálogo não sabe duração/codecs | FFprobe na fase de detecção |
+| Sem retenção | Pasta cresce indefinidamente | Política de retenção na fase de operação |
 | Sem detecção de remoção | Arquivo apagado continua no banco | Reconciliador futuro |
-| Sem remux automático | `.mkv` exige conversão para alguns destinos | FFmpeg na fase de clipping |
+| Sem sessão explícita | Arquivos da mesma captura não são relacionados | `capture_sessions` na fase de detecção |
+| Sem remux automático | `.mkv` não é convertido | Desnecessário: o sistema não gera clipes |
 | Sem autenticação | API local/confiável apenas | Autenticação antes de exposição remota |
 
 ## 4. Evoluções futuras
@@ -85,11 +86,11 @@ Adicionar `watchdog` (inotify no Linux, FSEvents no macOS, ReadDirectoryChangesW
 
 ### 4.3 Metadados e validação de mídia
 
-Na Fase 2, usar FFprobe para validar e persistir:
+Na fase de detecção, usar FFprobe para validar e persistir:
 
 - duração, resolução, fps, codecs;
 - faixas de áudio e canais;
-- keyframes e possibilidade de corte preciso;
+- taxa de amostragem e possibilidade de extração de áudio;
 - checksum/tamanho para detectar arquivo truncado.
 
 Um arquivo só seria marcado como `ready` após validação mínima. Falhas iriam para `failed` com `error_message`.
@@ -113,6 +114,18 @@ Um arquivo só seria marcado como `ready` após validação mínima. Falhas iria
 
 O contrato `SourceAdapter` e o registro em `app/sources/factory.py` permitem adicionar origens sem alterar o monitor. A evolução prevista é persistir o **tipo de adaptador por fonte** (nova coluna + migração Alembic), mantendo `obs_directory` como padrão.
 
+### 4.7 Sessões de captura
+
+O catálogo atual relaciona arquivos, mas não sabe quais pertencem à mesma captura. A fase de detecção introduzirá `capture_sessions`:
+
+- cada sessão tem um `started_at` que serve de instante zero;
+- cada `recording` aponta para uma sessão (`session_id`) e recebe `segment_index`, `start_offset_seconds` e `duration_seconds`;
+- os tempos de `clip_candidates` são relativos ao início da sessão;
+- sem OBS WebSocket, a sessão pode ser inferida pela proximidade temporal e pela duração obtida com FFprobe;
+- a migração é aditiva: registros legados permanecem válidos com `session_id` nulo.
+
+Detalhes em [`architecture.md`](architecture.md) e [`PROJECT_SPEC.md`](PROJECT_SPEC.md).
+
 ## 5. Configuração recomendada
 
 ```env
@@ -130,6 +143,7 @@ LIVECLIPPER_CAPTURE_AUTO_START=true
 
 - [ ] Evento de fim de gravação dispara varredura sem depender do intervalo.
 - [ ] Arquivo só é `ready` após validação de mídia.
+- [ ] Gravações da mesma captura são associadas à mesma sessão.
 - [ ] Retenção auditável e reversível.
 - [ ] Arquivo removido é reconciliado sem perder histórico.
 - [ ] Fallback para polling permanece funcional.

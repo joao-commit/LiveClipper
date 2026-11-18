@@ -33,12 +33,12 @@ class Settings(BaseSettings):
     output_dir: Path = Path("output")
     database_url: str = "sqlite:///./data/liveclipper.db"
 
-    # OBS: na Fase 1 a captura é feita lendo arquivos gravados pelo OBS.
+    # OBS: a captura atual é feita lendo arquivos gravados pelo OBS.
     obs_recordings_dir: Path | None = None
     obs_websocket_url: str = "ws://127.0.0.1:4455"
     obs_websocket_password: SecretStr | None = None
 
-    # Adaptador que lê a origem do vídeo. A Fase 1 oferece apenas
+    # Adaptador que lê a origem do vídeo. O estado atual oferece apenas
     # "obs_directory"; novos adaptadores podem ser registrados em app.sources.
     source_adapter: str = "obs_directory"
 

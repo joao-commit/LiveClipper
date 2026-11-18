@@ -1,12 +1,7 @@
-"""Publicação de clipes no YouTube (Fase 6).
+"""Fora do escopo do LiveClipper 2.0.
 
-Contrato futuro:
-- OAuth 2.0 com escopo mínimo;
-- upload via YouTube Data API v3;
-- agendamento e controle de idempotência;
-- registro do resultado no banco.
-
-A Fase 1 não publica nada e este pacote não expõe funções executáveis.
-Qualquer implementação futura exige autenticação, confirmação explícita e
-auditoria; não adicione rotas ou dependências de publicação antes da Fase 6.
+O produto não publica, agenda, envia ou compartilha conteúdo em YouTube ou
+qualquer outra plataforma. Não há OAuth, upload ou integração com APIs de
+publicação. Este pacote permanece vazio apenas como marcador histórico; não
+adicione código, rotas, dependências ou stubs aqui.
 """

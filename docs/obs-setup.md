@@ -22,7 +22,7 @@ No OBS:
    - **Caminho de gravação:** a pasta configurada no LiveClipper, por exemplo `/home/usuario/projeto_clipador/data/obs`.
    - **Formato:** `mkv` é recomendado por resistir melhor a encerramentos inesperados. O LiveClipper aceita `.mkv`, `.mp4`, `.mov`, `.flv` e `.ts` por padrão.
    - **Gerar arquivo com carimbo de data/hora:** recomendado; evita sobrescrita.
-   - **Encoder:** hardware (NVENC, Quick Sync, AMF) ou `x264`, conforme a máquina. Para clipes posteriores, prefira boa qualidade: 1080p ou resolução da janela, 30/60 fps e taxa adequada.
+   - **Encoder:** hardware (NVENC, Quick Sync, AMF) ou `x264`, conforme a máquina. Para análise posterior, prefira boa qualidade: 1080p ou resolução da janela, 30/60 fps e taxa adequada.
 4. Em **Áudio**, garanta que a faixa do conteúdo autorizado esteja sendo gravada.
 5. Faça uma gravação curta de teste e confirme que o arquivo aparece na pasta.
 
@@ -106,14 +106,14 @@ Se usar áudio da área de trabalho, ative **Não Perturbe** e feche aplicativos
 
 - No mixer, ajuste o ganho para picos em torno de **-12 dB a -6 dB**, evitando clipping (vermelho).
 - Em **Configurações → Saída → Avançado → Gravação**, habilite as faixas necessárias.
-- Em **Propriedades Avançadas de Áudio**, atribua as fontes às faixas. Para compatibilidade, mantenha uma faixa com o mix completo; faixas separadas podem ser úteis no futuro, mas o LiveClipper ainda não as processa.
+- Em **Propriedades Avançadas de Áudio**, atribua as fontes às faixas. Para compatibilidade, mantenha uma faixa com o mix completo; faixas separadas podem ser úteis para a detecção futura, mas o LiveClipper ainda não as processa.
 - O formato `.mkv` suporta múltiplas faixas; players e ferramentas posteriores podem selecionar a faixa desejada.
 
 ### 4.6 Teste de áudio
 
 1. Grave 15–30 segundos.
 2. Reproduza o arquivo e confirme que há áudio do navegador, sem eco, cortes ou silêncio.
-3. Se possível, inspecione as faixas com `ffprobe` (ferramenta externa; não é dependência da Fase 1).
+3. Se possível, inspecione as faixas com `ffprobe` (ferramenta externa; será usada na fase de detecção, não é necessária agora).
 4. Verifique a sincronia entre imagem e som; ajuste o deslocamento se necessário.
 
 ## 5. Cenas, perfis e múltiplas fontes
@@ -136,7 +136,7 @@ LIVECLIPPER_CAPTURE_AUTO_START=true
 
 - **poll interval:** frequência da varredura.
 - **settle:** tempo mínimo sem alteração para considerar a gravação encerrada. Aumente se o OBS demorar a finalizar arquivos grandes.
-- **SOURCE_ADAPTER:** mantenha `obs_directory` na Fase 1.
+- **SOURCE_ADAPTER:** mantenha `obs_directory` no estado atual.
 
 Cadastre a fonte pela API, com a referência de autorização:
 
@@ -181,7 +181,7 @@ Após a gravação terminar e o período de settle passar, o arquivo deve aparec
 
 ## 9. WebSocket do OBS
 
-A Fase 1 **não** usa o WebSocket. `LIVECLIPPER_OBS_WEBSOCKET_URL` e a senha existem apenas como preparação. O desenho futuro está em [`obs-websocket.md`](obs-websocket.md). Não é necessário habilitar o servidor WebSocket do OBS agora.
+O estado atual **não** usa o WebSocket. `LIVECLIPPER_OBS_WEBSOCKET_URL` e a senha existem apenas como preparação. O desenho futuro está em [`obs-websocket.md`](obs-websocket.md). Não é necessário habilitar o servidor WebSocket do OBS agora.
 
 ## 10. Checklist antes de gravar
 

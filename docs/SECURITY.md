@@ -1,6 +1,6 @@
 # Segurança e autorização
 
-Este documento define as regras de segurança da Fase 1 e como cada requisito é aplicado no código, na configuração e no fluxo operacional.
+Este documento define as regras de segurança do estado atual e como cada requisito é aplicado no código, na configuração e no fluxo operacional.
 
 ## 1. Requisitos e controles
 
@@ -9,8 +9,8 @@ Este documento define as regras de segurança da Fase 1 e como cada requisito é
 | Operar somente com conteúdo autorizado | Cadastro exige `authorization_confirmed: true` e `authorization_reference`; a varredura revalida referência e `authorized_at` antes de ingerir. | `app/sources/schemas.py`, `app/capture/scanner.py` |
 | Não armazenar credenciais no código-fonte | Nenhuma credencial é versionada; segredos vêm de `.env`/ambiente. A senha do OBS usa `SecretStr`. | `app/config.py`, `.env.example` |
 | Não enviar gravações ou tokens ao Git | `.gitignore` cobre `.env`, bancos, `data/`, `output/`, mídia e material secreto. | `.gitignore` |
-| Não publicar automaticamente | Não há OAuth, upload, agendamento ou rota de publicação. O pacote `app.publishing` contém apenas o contrato futuro. | `app/publishing/__init__.py` |
-| Não acessar fontes privadas/protegidas | A Fase 1 lê apenas arquivos locais de diretórios autorizados; não baixa streams, não usa cookies, não contorna DRM e não segue symlinks para fora da pasta. | `app/sources/local.py` |
+| Não publicar nem editar conteúdo | Não há OAuth, upload, agendamento, rota de publicação, recorte ou renderização. `app.publishing` está fora do escopo e vazio. | `app/publishing/__init__.py` |
+| Não acessar fontes privadas/protegidas | O sistema lê apenas arquivos locais de diretórios autorizados; não baixa streams, não usa cookies, não contorna DRM e não segue symlinks para fora da pasta. | `app/sources/local.py` |
 
 ## 2. Autorização de conteúdo
 
@@ -103,17 +103,18 @@ git ls-files | grep -Ei '\.(env|mkv|mp4|mov|flv|ts|db|pem|key)$|token|secret' ||
 
 Nunca use `git add -f` para mídia, bancos ou `.env`. Se uma gravação precisar ser compartilhada, use armazenamento externo autorizado, não o repositório.
 
-## 5. Publicação desativada nesta fase
+## 5. Publicação e edição fora do escopo
 
-A Fase 1 **não publica** conteúdo:
+O LiveClipper **não edita nem publica** conteúdo. Essa é uma decisão permanente de escopo, não uma fase futura:
 
 - não há OAuth 2.0;
 - não há upload para YouTube ou qualquer plataforma;
 - não há agendamento, fila de publicação ou integração com APIs de terceiros;
+- não há recorte, renderização, geração de Shorts, conversão 9:16 ou legendas;
 - `httpx` existe apenas como dependência de desenvolvimento para o `TestClient`;
-- `app/publishing` contém somente a descrição do contrato futuro.
+- `app.publishing` e `app.clipping` estão fora do escopo e não expõem funções executáveis.
 
-A publicação só poderá ser implementada na Fase 6, com escopo mínimo de OAuth, autenticação da API, confirmação explícita do operador e auditoria. Nenhuma rota de publicação deve ser adicionada antes disso.
+Nenhuma rota de edição, legenda ou publicação deve ser adicionada. A saída do sistema é uma tabela de candidatos para revisão humana.
 
 ## 6. Fontes privadas ou protegidas
 
@@ -151,7 +152,7 @@ A contenção de caminho não substitui controles do sistema operacional. Recome
 
 ## 7. API e rede
 
-- A API da Fase 1 não tem autenticação e deve escutar em `127.0.0.1`.
+- A API atual não tem autenticação e deve escutar em `127.0.0.1`.
 - Não exponha a porta 8000 nem a porta 4455 do OBS diretamente na internet.
 - Para acesso remoto, use autenticação, TLS, rate limiting e reverse proxy.
 - Não habilite CORS amplo sem necessidade.
@@ -171,7 +172,7 @@ A suíte cobre:
 - senha do OBS não aparece em `repr`/`str` das configurações;
 - `.env.example` não contém valores sensíveis preenchidos;
 - `.gitignore` cobre ambiente, dados, mídia, bancos e chaves;
-- não existem rotas de publicação/upload/YouTube/OAuth;
+- não existem rotas de edição, legenda, publicação/upload, YouTube ou OAuth;
 - scanner recusa fonte cuja autorização foi removida no banco;
 - adaptador local ignora symlinks que apontam para fora da pasta autorizada.
 
@@ -186,7 +187,7 @@ pytest
 
 - [ ] Nenhuma credencial, token ou gravação no diff.
 - [ ] `.env` não está rastreado.
-- [ ] Nenhuma rota ou dependência de publicação foi adicionada.
+- [ ] Nenhuma rota ou dependência de edição, legenda ou publicação foi adicionada.
 - [ ] Nenhum download de stream ou contorno de proteção foi introduzido.
 - [ ] Fonte cadastrada possui autorização e diretório permitido.
 - [ ] Symlinks e caminhos fora da pasta autorizada são ignorados.

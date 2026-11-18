@@ -1,3 +1,3 @@
-"""LiveClipper: pipeline de clipes para transmissões capturadas com autorização."""
+"""LiveClipper: detecção de momentos interessantes em transmissões autorizadas."""
 
 __version__ = "0.1.0"

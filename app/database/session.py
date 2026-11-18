@@ -52,8 +52,8 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
 def init_db(engine: Engine) -> None:
     """Cria as tabelas iniciais.
 
-    A Fase 1 usa ``create_all`` por ser um banco novo. Quando o schema evoluir,
-    a migração deverá ser feita com Alembic em uma fase própria.
+    O schema atual usa ``create_all`` por ser um banco novo. Quando o schema
+    evoluir, a migração deverá ser feita com Alembic em uma fase própria.
     """
 
     from app.database import models  # noqa: F401  (registra os modelos no metadata)
