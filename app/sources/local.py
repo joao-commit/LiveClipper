@@ -27,7 +27,8 @@ class LocalObsDirectorySource(SourceAdapter):
     ) -> None:
         self.source_id = source_id
         self.name = name
-        self.directory = directory.expanduser()
+        # Resolve uma vez para comparar a contenção dos arquivos encontrados.
+        self.directory = directory.expanduser().resolve()
         self.extensions = frozenset(extension.lower() for extension in extensions)
 
     def availability_error(self) -> str | None:
@@ -55,20 +56,28 @@ class LocalObsDirectorySource(SourceAdapter):
             if entry.name.startswith("."):
                 continue
             try:
-                if not entry.is_file():
+                if entry.is_symlink() or not entry.is_file():
                     continue
             except OSError:
                 continue
             if entry.suffix.lower() not in self.extensions:
                 continue
+            if not os.access(entry, os.R_OK):
+                continue
 
             try:
                 stat = entry.stat()
+                resolved = entry.resolve()
             except OSError:
                 continue
 
+            # Garante que o arquivo pertence ao diretório autorizado, mesmo
+            # diante de links simbólicos ou alterações durante a varredura.
+            if not resolved.is_relative_to(self.directory):
+                continue
+
             yield RecordingCandidate(
-                path=entry.resolve(),
+                path=resolved,
                 size_bytes=stat.st_size,
                 modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
             )

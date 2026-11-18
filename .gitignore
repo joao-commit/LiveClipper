@@ -242,3 +242,26 @@ output/*
 # Virtual environments
 .venv/
 venv/
+
+# Gravações e artefatos de mídia (nunca versionar conteúdo capturado)
+# .ts é MPEG-TS; se um frontend TypeScript for adicionado, crie exceções explícitas.
+*.mkv
+*.mp4
+*.mov
+*.flv
+*.ts
+*.m4v
+*.webm
+*.wav
+*.mp3
+*.m4a
+
+# Material secreto e credenciais
+*.pem
+*.key
+*.p12
+*.pfx
+client_secret*.json
+credentials*.json
+token*.json
+secrets*.json

@@ -8,6 +8,8 @@
 - [x] Cadastro de fontes com autorização obrigatória
 - [x] Leitura de gravações locais do OBS
 - [x] Monitor periódico com regra de estabilidade
+- [x] Contrato de origem de vídeo substituível e registro de adaptadores
+- [x] Requisitos de segurança, autorização e higiene do Git
 - [x] API de health, fontes, captura e gravações
 - [x] Testes automatizados
 

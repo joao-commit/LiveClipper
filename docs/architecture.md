@@ -29,7 +29,7 @@ database (capture_sources, recordings)
 | Pacote | Responsabilidade na Fase 1 |
 | --- | --- |
 | `app.obs` | Configuração e diagnóstico do OBS. Contrato futuro para WebSocket. |
-| `app.sources` | Abstração de fontes, adaptador de diretório local, cadastro autorizado e normalização de extensões. |
+| `app.sources` | Abstração de fontes, adaptador de diretório local, registro de adaptadores, cadastro autorizado e normalização de extensões. |
 | `app.capture` | Varredura, regra de estabilidade, deduplicação e monitor periódico. |
 | `app.database` | Modelos SQLAlchemy, sessão, `create_all` e repositórios. |
 | `app.api` | Routers, dependências, schemas Pydantic e tratamento HTTP. |
@@ -41,7 +41,7 @@ database (capture_sources, recordings)
 
 1. A API cria uma `CaptureSource` com `authorization_reference`, `authorization_notes` e `authorized_at`.
 2. O monitor (`CaptureMonitor`) executa a cada `CAPTURE_POLL_INTERVAL_SECONDS`.
-3. Para cada fonte habilitada, o adaptador lista arquivos cuja extensão está na allowlist da fonte.
+3. Para cada fonte habilitada, o adaptador registrado em `app.sources.factory` lista arquivos cuja extensão está na allowlist da fonte. O adaptador ativo vem de `LIVECLIPPER_SOURCE_ADAPTER` (padrão `obs_directory`); o scanner só conhece o contrato `SourceAdapter`.
 4. O scanner aplica:
    - **tamanho > 0** (caso contrário: `ignored`);
    - **mtime mais antigo que `now - CAPTURE_SETTLE_SECONDS`** (caso contrário: `unstable`);
@@ -90,7 +90,9 @@ Todos os timestamps são normalizados em UTC por um `TypeDecorator`, inclusive n
 
 ### Segurança operacional
 
-A API da Fase 1 não possui autenticação e pressupõe execução local/confiável. O bind padrão é `127.0.0.1`. Antes de expor remotamente, adicione autenticação, TLS e controle de acesso em um reverse proxy ou em uma camada própria. As senhas do OBS WebSocket nunca são serializadas nos endpoints de diagnóstico.
+A API da Fase 1 não possui autenticação e pressupõe execução local/confiável. O bind padrão é `127.0.0.1`. Antes de expor remotamente, adicione autenticação, TLS e controle de acesso em um reverse proxy ou em uma camada própria. As senhas do OBS WebSocket usam `SecretStr` e nunca são serializadas nos endpoints de diagnóstico.
+
+O adaptador local ignora symlinks e valida que cada arquivo resolvido permanece dentro do diretório autorizado. A Fase 1 não baixa transmissões, não acessa fontes protegidas e não publica conteúdo. Consulte [`SECURITY.md`](SECURITY.md).
 
 ## 6. Autorização e conformidade
 
@@ -114,7 +116,7 @@ O LiveClipper não decide se o uso é lícito; ele registra a fonte autorizada e
 | Heurística por `mtime` | Sem dependências externas | Um arquivo pausado pode ser considerado estável; ajuste o settle |
 | `create_all` | Banco novo e schema pequeno | Migrações reais entram com Alembic quando o schema evoluir |
 | SQLite | Desenvolvimento e execução local simples | Para múltiplos workers/alta concorrência, avaliar PostgreSQL |
-| Sem WebSocket OBS | Não é necessário para ingerir arquivos | Controle de gravação/replay buffer fica para fase futura |
+| Sem WebSocket OBS | Não é necessário para ingerir arquivos | Controle de gravação/replay buffer fica para fase futura ([desenho](obs-websocket.md)) |
 
 ## 8. Próximas fases (visão)
 
@@ -125,3 +127,12 @@ O LiveClipper não decide se o uso é lícito; ele registra a fonte autorizada e
 - **Fase 6:** OAuth 2.0 e publicação via YouTube Data API v3.
 
 Cada fase deve adicionar dependências apenas quando necessárias e manter a origem em gravações autorizadas.
+
+## 9. Documentos relacionados
+
+- [`PROJECT_SPEC.md`](PROJECT_SPEC.md) — especificação funcional e critérios de aceite.
+- [`SECURITY.md`](SECURITY.md) — requisitos de segurança e autorização.
+- [`obs-setup.md`](obs-setup.md) — captura de janela do navegador e áudio.
+- [`obs-websocket.md`](obs-websocket.md) — integração futura não implementada.
+- [`recordings-monitoring.md`](recordings-monitoring.md) — monitoramento atual e futuro da pasta.
+- [`roadmap.md`](roadmap.md) — fases do produto.

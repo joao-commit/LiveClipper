@@ -18,7 +18,7 @@ from app.database.base import utc_now
 from app.database.models import CaptureSource, Recording, RecordingStatus
 from app.database.repositories import RecordingRepository, SourceRepository
 from app.sources.base import SourceUnavailableError
-from app.sources.factory import build_source_adapter
+from app.sources.factory import UnknownSourceAdapter, build_source_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -109,14 +109,26 @@ def scan_source(
             source_name=source.name,
             error="fonte desabilitada",
         )
-    if not source.authorization_reference or source.authorized_at is None:
+    if (
+        not source.authorization_reference
+        or not source.authorization_reference.strip()
+        or source.authorized_at is None
+    ):
         return SourceScanReport(
             source_id=source.id,
             source_name=source.name,
             error="autorização de captura não confirmada para a fonte",
         )
 
-    adapter = build_source_adapter(source)
+    try:
+        adapter = build_source_adapter(source, settings.source_adapter)
+    except UnknownSourceAdapter as exc:
+        return SourceScanReport(
+            source_id=source.id,
+            source_name=source.name,
+            error=str(exc),
+        )
+
     availability_error = adapter.availability_error()
     if availability_error is not None:
         return SourceScanReport(

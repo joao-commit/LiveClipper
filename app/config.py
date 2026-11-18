@@ -9,7 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,7 +36,11 @@ class Settings(BaseSettings):
     # OBS: na Fase 1 a captura é feita lendo arquivos gravados pelo OBS.
     obs_recordings_dir: Path | None = None
     obs_websocket_url: str = "ws://127.0.0.1:4455"
-    obs_websocket_password: str | None = None
+    obs_websocket_password: SecretStr | None = None
+
+    # Adaptador que lê a origem do vídeo. A Fase 1 oferece apenas
+    # "obs_directory"; novos adaptadores podem ser registrados em app.sources.
+    source_adapter: str = "obs_directory"
 
     recording_extensions: str = ".mkv,.mp4,.mov,.flv,.ts"
     capture_poll_interval_seconds: float = Field(default=5.0, gt=0)
@@ -55,6 +59,14 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @field_validator("source_adapter")
+    @classmethod
+    def _normalize_source_adapter(cls, value: str) -> str:
+        stripped = value.strip().lower()
+        if not stripped:
+            raise ValueError("source_adapter não pode ser vazio")
+        return stripped
 
     @field_validator("recording_extensions")
     @classmethod

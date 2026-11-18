@@ -15,6 +15,7 @@ Implementado:
 - Leitura exclusiva de arquivos locais gravados pelo OBS.
 - Monitor periódico que só registra arquivos estáveis (gravação encerrada).
 - API FastAPI com health check, fontes, gravações, captura e diagnóstico do OBS.
+- Origem de vídeo substituível por contrato (`SourceAdapter` + registro de adaptadores).
 - Testes com Pytest/TestClient.
 
 Fora do escopo desta fase:
@@ -24,7 +25,19 @@ Fora do escopo desta fase:
 - Recorte, conversão vertical, legendas e publicação no YouTube.
 - Controle remoto do OBS via WebSocket (apenas configuração e diagnóstico).
 
-O roadmap está em [`docs/roadmap.md`](docs/roadmap.md).
+O roadmap está em [`docs/roadmap.md`](docs/roadmap.md). A especificação completa, as fases e os critérios de aceite estão em [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md).
+
+## Documentação
+
+| Documento | Conteúdo |
+| --- | --- |
+| [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md) | Especificação do projeto, configuração, API, dados e fases. |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Requisitos de segurança, autorização, segredos e higiene do Git. |
+| [`docs/architecture.md`](docs/architecture.md) | Arquitetura, fluxo de ingestão e decisões técnicas. |
+| [`docs/obs-setup.md`](docs/obs-setup.md) | Como capturar a janela do navegador e o áudio no OBS. |
+| [`docs/obs-websocket.md`](docs/obs-websocket.md) | Desenho da integração futura com o OBS WebSocket (não implementada). |
+| [`docs/recordings-monitoring.md`](docs/recordings-monitoring.md) | Monitoramento atual da pasta de gravações e evoluções futuras. |
+| [`docs/roadmap.md`](docs/roadmap.md) | Fases do produto. |
 
 ## Requisitos
 
@@ -49,6 +62,8 @@ LIVECLIPPER_OBS_RECORDINGS_DIR=./data/obs
 ```
 
 O diretório é criado automaticamente na inicialização. Configure o OBS para gravar nele (ou em um diretório por fonte). Veja [`docs/obs-setup.md`](docs/obs-setup.md).
+
+A origem do vídeo é selecionada por `LIVECLIPPER_SOURCE_ADAPTER` (padrão `obs_directory`). Novos adaptadores podem ser registrados sem alterar o scanner; veja a seção 4.3 de [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md).
 
 ## Executar
 
@@ -121,7 +136,7 @@ app/
 ├── api/           # FastAPI, dependências, routers e schemas HTTP
 ├── capture/       # scanner de arquivos, monitor periódico e schemas
 ├── obs/           # configuração e diagnóstico da integração OBS
-├── sources/       # abstração de fontes, adaptador local e cadastro
+├── sources/       # contrato de fonte, adaptador local, registro e cadastro
 ├── detection/     # reservado para detecção (Fase 3)
 ├── clipping/      # reservado para recorte/edição (Fase 4)
 ├── publishing/    # reservado para YouTube (Fase 6)
@@ -138,12 +153,15 @@ tests/
 
 A Fase 1 não implementa autenticação na API: ela foi desenhada para execução local. Mantenha o servidor em `127.0.0.1` ou em uma rede confiável. Se precisar expor a API, coloque-a atrás de autenticação/reverse proxy antes de qualquer uso remoto.
 
+Nunca versione `.env`, gravações, bancos ou tokens. O sistema não publica automaticamente nesta fase, não baixa transmissões e não acessa fontes protegidas. A política completa está em [`docs/SECURITY.md`](docs/SECURITY.md).
+
 ## Decisões arquiteturais
 
 - **Observação passiva do OBS:** a Fase 1 lê arquivos; não depende de WebSocket nem de plugins.
 - **Estabilidade antes da ingestão:** evita registrar arquivos que o OBS ainda está escrevendo.
 - **Autorização modelada:** `authorization_reference` e `authorization_notes` ficam persistidas junto da fonte.
 - **Separação por responsabilidade:** scanner, adaptador de fonte, persistência e API não se conhecem além dos contratos necessários.
+- **Origem substituível:** `SourceAdapter` isola a leitura da origem; o adaptador ativo é resolvido por configuração e novos tipos podem ser registrados.
 - **Dependências mínimas:** FFmpeg, OpenCV, Faster-Whisper e YouTube API entram somente quando suas fases forem implementadas.
 
 Detalhes em [`docs/architecture.md`](docs/architecture.md).
